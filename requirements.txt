@@ -1,0 +1,3 @@
+# Si necesitas instalar dependencias adicionales
+# La imagen ya trae FastAPI, pero puedes añadir más
+requests==2.31.0
