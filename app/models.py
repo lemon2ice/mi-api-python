@@ -103,36 +103,58 @@ class BookModel:
         GROUP BY b.id
         """
         book = db.fetch_one(query, (book_id,))
-        if book and book.get('author_ids'):
-            # Convertir "1,2,3" a [1, 2, 3]
-            book['author_ids'] = [
-                int(aid.strip()) 
-                for aid in book['author_ids'].split(',') 
-                if aid.strip()
-            ]
-        elif book:
-            book['author_ids'] = []
+        if book:
+            if book.get('author_ids'):
+                # Si author_ids es string, convertir a lista
+                if isinstance(book['author_ids'], str):
+                    # Convertir "1,2,3" a [1, 2, 3]
+                    book['author_ids'] = [
+                        int(aid.strip()) 
+                        for aid in book['author_ids'].split(',') 
+                        if aid.strip()
+                    ]
+                # Si es None o vacío, establecer lista vacía
+                elif book['author_ids'] is None:
+                    book['author_ids'] = []
+                # Si ya es lista, dejarlo como está
+            else:
+                book['author_ids'] = []
         return book
     
     @staticmethod
     def update_book(book_id: int, book_data: dict):
         """Actualiza un libro existente"""
+        print(f"DEBUG: En BookModel.update_book - ID: {book_id}, datos: {book_data}")
+        
         # Construir la consulta dinámicamente
         fields = []
         values = []
         
         for field in ['title', 'isbn', 'publication_year', 'price', 'stock', 'cover_image_url']:
-            if field in book_data:
+            if field in book_data and book_data[field] is not None:
                 fields.append(f"{field} = %s")
                 values.append(book_data[field])
         
+        print(f"DEBUG: Campos a actualizar: {fields}")
+        print(f"DEBUG: Valores: {values}")
+        
         if not fields:
+            print("DEBUG: No hay campos para actualizar")
             return False
         
         values.append(book_id)
         query = f"UPDATE books SET {', '.join(fields)} WHERE id = %s"
-        db.execute_query(query, tuple(values))
-        return True
+        
+        print(f"DEBUG: Query: {query}")
+        print(f"DEBUG: Parámetros: {values}")
+        
+        try:
+            db.execute_query(query, tuple(values))
+            print("DEBUG: Libro actualizado exitosamente en la base de datos")
+            return True
+        except Exception as e:
+            print(f"ERROR: Error ejecutando query: {str(e)}")
+            raise
     
     @staticmethod
     def delete_book(book_id: int):
