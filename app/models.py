@@ -104,21 +104,32 @@ class BookModel:
         """
         book = db.fetch_one(query, (book_id,))
         if book:
-            if book.get('author_ids'):
-                # Si author_ids es string, convertir a lista
-                if isinstance(book['author_ids'], str):
-                    # Convertir "1,2,3" a [1, 2, 3]
-                    book['author_ids'] = [
-                        int(aid.strip()) 
-                        for aid in book['author_ids'].split(',') 
-                        if aid.strip()
-                    ]
-                # Si es None o vacío, establecer lista vacía
-                elif book['author_ids'] is None:
-                    book['author_ids'] = []
-                # Si ya es lista, dejarlo como está
-            else:
+            print(f"DEBUG get_book_by_id: author_ids tipo: {type(book.get('author_ids'))}, valor: {book.get('author_ids')}")
+            
+            # Asegurar que author_ids sea una lista
+            ids_value = book.get('author_ids')
+            if ids_value and isinstance(ids_value, str):
+                # Convertir cadena "1,2,3" a lista [1, 2, 3]
+                book['author_ids'] = [
+                    int(aid.strip()) 
+                    for aid in ids_value.split(',') 
+                    if aid.strip()
+                ]
+            elif ids_value is None or ids_value == '':
+                # Si es None o cadena vacía, establecer lista vacía
                 book['author_ids'] = []
+            elif isinstance(ids_value, list):
+                # Si ya es lista, dejarla como está
+                pass
+            else:
+                # Para cualquier otro caso (números, etc.), convertir a lista
+                try:
+                    book['author_ids'] = [int(ids_value)]
+                except:
+                    book['author_ids'] = []
+        else:
+            book = None
+            
         return book
     
     @staticmethod

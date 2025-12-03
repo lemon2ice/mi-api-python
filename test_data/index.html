@@ -208,15 +208,30 @@ function cancelEdit() {
 
 // GUARDAR CAMBIOS
 async function saveEdit() {
+    // Crear objeto con validación de campos vacíos
     const book = {
-        title: document.getElementById("edit_title").value,
-        isbn: document.getElementById("edit_isbn").value,
-        publication_year: parseInt(document.getElementById("edit_year").value),
-        price: parseFloat(document.getElementById("edit_price").value),
-        stock: parseInt(document.getElementById("edit_stock").value),
-        cover_image_url: document.getElementById("edit_cover").value,
-        author_ids: document.getElementById("edit_authors").value.split(",").map(x => parseInt(x.trim()))
+        title: document.getElementById("edit_title").value || null,
+        isbn: document.getElementById("edit_isbn").value || null,
+        publication_year: document.getElementById("edit_year").value ? 
+                         parseInt(document.getElementById("edit_year").value) : null,
+        price: document.getElementById("edit_price").value ? 
+              parseFloat(document.getElementById("edit_price").value) : null,
+        stock: document.getElementById("edit_stock").value ? 
+              parseInt(document.getElementById("edit_stock").value) : null,
+        cover_image_url: document.getElementById("edit_cover").value || null,
     };
+    
+    // Procesar author_ids solo si hay valores
+    const authorsInput = document.getElementById("edit_authors").value;
+    if (authorsInput.trim()) {
+        book.author_ids = authorsInput.split(",")
+            .map(x => parseInt(x.trim()))
+            .filter(x => !isNaN(x)); // Solo números válidos
+    } else {
+        book.author_ids = []; // Array vacío en lugar de null
+    }
+
+    console.log("Enviando datos:", book); // Para debug
 
     const res = await fetch(`${API_URL}/books/${editingBookId}`, {
         method: "PUT",
@@ -224,14 +239,30 @@ async function saveEdit() {
         body: JSON.stringify(book)
     });
 
+    const responseData = await res.text(); // Primero obtener texto para debug
+    console.log("Respuesta:", responseData); // Para debug
+
     if (!res.ok) {
-        document.getElementById("editStatus").innerText = "❌ Error al editar libro";
+        try {
+            const errorData = JSON.parse(responseData);
+            document.getElementById("editStatus").innerText = `❌ Error: ${errorData.detail || "Error al editar libro"}`;
+        } catch {
+            document.getElementById("editStatus").innerText = `❌ Error: ${responseData}`;
+        }
         return;
     }
 
-    document.getElementById("editStatus").innerText = "✅ Cambios guardados";
-    document.getElementById("editCard").classList.add("hidden");
-    loadBooks();
+    try {
+        const data = JSON.parse(responseData);
+        document.getElementById("editStatus").innerText = "✅ Cambios guardados";
+        document.getElementById("editCard").classList.add("hidden");
+        loadBooks();
+    } catch (e) {
+        console.error("Error parseando respuesta:", e);
+        document.getElementById("editStatus").innerText = "⚠️ Cambios guardados pero hubo un error en la respuesta";
+        document.getElementById("editCard").classList.add("hidden");
+        loadBooks();
+    }
 }
 
 // AUTORES
