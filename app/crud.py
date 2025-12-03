@@ -58,39 +58,64 @@ class BookCRUD:
     @staticmethod
     def update_book(book_id: int, book_data: BookUpdate):
         """Actualiza un libro existente"""
+        print(f"DEBUG: Actualizando libro {book_id} con datos: {book_data.dict()}")
+        
         # Verificar que el libro existe
         existing_book = BookModel.get_book_by_id(book_id)
         if not existing_book:
+            print(f"DEBUG: Libro {book_id} no encontrado")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Libro no encontrado"
             )
         
+        print(f"DEBUG: Libro existente: {existing_book}")
+        
         try:
             # Filtrar campos no nulos
             update_data = {k: v for k, v in book_data.dict(exclude={'author_ids'}).items() if v is not None}
+            
+            print(f"DEBUG: Datos a actualizar: {update_data}")
             
             if update_data:
                 BookModel.update_book(book_id, update_data)
             
             # Manejar autores si se proporcionaron
             if book_data.author_ids is not None:
+                print(f"DEBUG: Procesando autores: {book_data.author_ids}")
+                print(f"DEBUG: Autores existentes: {existing_book.get('author_ids')}")
+                
                 # Primero, eliminar todas las asociaciones existentes
                 if existing_book.get('author_ids'):
-                    author_ids = [int(id_str) for id_str in existing_book['author_ids'].split(',') if id_str]
+                    print(f"DEBUG: Eliminando asociaciones existentes")
+                    # Asegurarnos de que author_ids sea una lista
+                    if isinstance(existing_book['author_ids'], str):
+                        # Si es string, convertir a lista
+                        author_ids = [int(id_str) for id_str in existing_book['author_ids'].split(',') if id_str]
+                    else:
+                        # Si ya es lista, usarla directamente
+                        author_ids = existing_book['author_ids']
+                    
+                    print(f"DEBUG: IDs de autores a eliminar: {author_ids}")
                     for author_id in author_ids:
                         BookModel.remove_author_from_book(book_id, author_id)
                 
                 # Luego, agregar los nuevos autores
+                print(f"DEBUG: Agregando nuevos autores")
                 for author_id in book_data.author_ids:
                     author = AuthorModel.get_author_by_id(author_id)
                     if author:
                         BookModel.add_author_to_book(book_id, author_id)
+                    else:
+                        print(f"WARN: Autor {author_id} no encontrado")
             
             # Retornar el libro actualizado
             updated_book = BookModel.get_book_by_id(book_id)
+            print(f"DEBUG: Libro actualizado: {updated_book}")
             return updated_book
         except Exception as e:
+            print(f"ERROR: Excepción en update_book: {str(e)}")
+            print(f"ERROR: Traceback completo:", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error actualizando el libro: {str(e)}"

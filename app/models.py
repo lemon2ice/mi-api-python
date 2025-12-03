@@ -75,7 +75,19 @@ class BookModel:
         GROUP BY b.id
         ORDER BY b.title
         """
-        return db.fetch_all(query)
+        books = db.fetch_all(query)
+        # Convertir author_ids de cadena a lista
+        for book in books:
+            if book.get('author_ids'):
+                # Convertir "1,2,3" a [1, 2, 3]
+                book['author_ids'] = [
+                    int(aid.strip()) 
+                    for aid in book['author_ids'].split(',') 
+                    if aid.strip()
+                ]
+            else:
+                book['author_ids'] = []
+        return books
     
     @staticmethod
     def get_book_by_id(book_id: int):
@@ -90,7 +102,17 @@ class BookModel:
         WHERE b.id = %s
         GROUP BY b.id
         """
-        return db.fetch_one(query, (book_id,))
+        book = db.fetch_one(query, (book_id,))
+        if book and book.get('author_ids'):
+            # Convertir "1,2,3" a [1, 2, 3]
+            book['author_ids'] = [
+                int(aid.strip()) 
+                for aid in book['author_ids'].split(',') 
+                if aid.strip()
+            ]
+        elif book:
+            book['author_ids'] = []
+        return book
     
     @staticmethod
     def update_book(book_id: int, book_data: dict):

@@ -1,0 +1,9 @@
+{
+    "title": "Cien años de soledad",
+    "isbn": "9788437604947",
+    "publication_year": 1967,
+    "price": 25.99,
+    "stock": 10,
+    "cover_image_url": "https://ejemplo.com/imagen.jpg",
+    "author_ids": [1]
+}
