@@ -4,11 +4,13 @@ FROM demisto/fastapi:0.118.0.5221545
 # Establecer directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias del sistema necesarias para mysql-connector
-RUN apt-get update && apt-get install -y \
-    default-libmysqlclient-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+# Instalar dependencias del sistema necesarias para mysql-connector (Alpine Linux usa apk)
+RUN apk update && apk add --no-cache \
+    mariadb-connector-c-dev \
+    build-base \
+    pkgconfig \
+    python3-dev \
+    && rm -rf /var/cache/apk/*
 
 # Copiar requirements e instalar dependencias adicionales
 COPY requirements.txt .
@@ -21,4 +23,4 @@ COPY . .
 EXPOSE 8000
 
 # Comando para ejecutar la aplicación
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
