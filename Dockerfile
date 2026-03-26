@@ -1,4 +1,4 @@
-# USA la imagen de Demisto que descargaste
+# Usamos la imagen que descargamos de Docker Hub
 FROM demisto/fastapi:0.118.0.5221545
 
 # Establecer directorio de trabajo
