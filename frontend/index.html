@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Biblioteca API</title>
+    <!-- Fuente Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Iconos (Phosphor Icons) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-body: #f3f4f6;
+            --bg-card: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --danger: #ef4444;
+            --success: #10b981;
+            --radius: 8px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
+        body { background-color: var(--bg-body); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; }
+
+        /* --- Utilidades --- */
+        .hidden { display: none !important; }
+        .btn { padding: 0.6rem 1.2rem; border-radius: var(--radius); border: none; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; items-align: center; gap: 8px; font-size: 0.9rem; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-danger:hover { background-color: #dc2626; }
+        .btn-secondary { background-color: white; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-secondary:hover { background-color: #f9fafb; }
+        .btn-icon { padding: 0.5rem; border-radius: 6px; }
+
+        /* --- Login Screen --- */
+        #login-view { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%); }
+        .login-card { background: white; padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 400px; shadow: var(--shadow); }
+        .login-header { text-align: center; margin-bottom: 2rem; }
+        .login-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--text-main); }
+        .login-header p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem; }
+        
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: #374151; }
+        .form-input { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.95rem; transition: border-color 0.2s; }
+        .form-input:focus { outline: none; border-color: var(--primary); ring: 2px solid #e0e7ff; }
+
+        /* --- Dashboard --- */
+        #dashboard-view { flex: 1; display: flex; flex-direction: column; height: 100%; }
+        header { background: white; padding: 1rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-weight: 700; font-size: 1.25rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        
+        main { padding: 2rem; flex: 1; overflow-y: auto; max-width: 1200px; margin: 0 auto; width: 100%; }
+        
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .search-bar { position: relative; width: 300px; }
+        .search-bar i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+        .search-bar input { padding-left: 36px; }
+
+        /* --- Tabla --- */
+        .table-container { background: white; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background: #f9fafb; padding: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+        td { padding: 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: #f9fafb; }
+        
+        .book-cover { width: 40px; height: 60px; object-fit: cover; border-radius: 4px; background: #e5e7eb; }
+        .badge { display: inline-block; padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; }
+        .badge-stock { background: #dcfce7; color: #166534; }
+        .badge-low { background: #fee2e2; color: #991b1b; }
+
+        /* --- Modals --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 50; backdrop-filter: blur(2px); opacity: 0; visibility: hidden; transition: all 0.2s; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal { background: white; border-radius: 16px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.2s; }
+        .modal-overlay.active .modal { transform: scale(1); }
+        
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 1.25rem; font-weight: 600; }
+        .modal-body { padding: 1.5rem; }
+        .modal-footer { padding: 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 1rem; background: #f9fafb; border-radius: 0 0 16px 16px; }
+
+        /* Grid en formularios */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .col-span-2 { grid-column: span 2; }
+
+        /* Select multiple */
+        select[multiple] { height: 100px; }
+
+        /* Notificaciones */
+        #toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; border-radius: 8px; color: white; font-weight: 500; transform: translateY(100px); transition: transform 0.3s; z-index: 100; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        #toast.show { transform: translateY(0); }
+        .toast-success { background-color: var(--success); }
+        .toast-error { background-color: var(--danger); }
+        
+        /* Detalle Libro */
+        .detail-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
+        .detail-cover { width: 100%; border-radius: 8px; shadow: var(--shadow); }
+        .detail-info h3 { margin-top: 0; font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .detail-meta { color: var(--text-muted); margin-bottom: 1.5rem; }
+        .detail-row { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
+        .detail-label { font-weight: 500; color: var(--text-muted); }
+
+    </style>
+</head>
+<body>
+
+    <!-- NOTIFICACIÓN -->
+    <div id="toast"></div>
+
+    <!-- PANTALLA DE LOGIN -->
+    <div id="login-view">
+        <div class="login-card">
+            <div class="login-header">
+                <i class="ph ph-books" style="font-size: 3rem; color: var(--primary);"></i>
+                <h1>Gestor de Biblioteca</h1>
+                <p>Ingresa tus credenciales para acceder</p>
+            </div>
+            <form id="login-form">
+                <!-- Se eliminó el campo de DNS/URL -->
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" class="form-input" placeholder="admin@library.com" value="admin@library.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="password" class="form-input" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                    Iniciar Sesión
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard-view" class="hidden">
+        <header>
+            <div class="logo">
+                <i class="ph ph-books"></i>
+                <span>Biblioteca Admin</span>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <span id="user-display" style="font-size: 0.9rem; color: var(--text-muted);"></span>
+                <button onclick="logout()" class="btn btn-secondary btn-icon">
+                    <i class="ph ph-sign-out"></i>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <div class="toolbar">
+                <div class="search-bar">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" id="search-input" class="form-input" placeholder="Buscar por título...">
+                </div>
+                <button onclick="openModal('create')" class="btn btn-primary">
+                    <i class="ph ph-plus"></i> Nuevo Libro
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="80">Portada</th>
+                            <th>Título</th>
+                            <th>Autor(es)</th>
+                            <th>Año</th>
+                            <th>Precio</th>
+                            <th>Stock</th>
+                            <th style="text-align: right;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="books-table-body">
+                        <!-- Contenido dinámico -->
+                    </tbody>
+                </table>
+                <div id="loading" style="padding: 2rem; text-align: center; color: var(--text-muted); display: none;">
+                    Cargando libros...
+                </div>
+                <div id="empty-state" style="padding: 3rem; text-align: center; color: var(--text-muted); display: none;">
+                    No se encontraron libros.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL FORMULARIO (Crear/Editar) -->
+    <div id="modal-form" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-form-title">Nuevo Libro</h2>
+                <button onclick="closeModal('modal-form')" class="btn btn-secondary btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="book-form">
+                <div class="modal-body">
+                    <input type="hidden" id="book-id">
+                    <div class="form-group">
+                        <label>Título del Libro</label>
+                        <input type="text" id="book-title" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>ISBN</label>
+                            <input type="text" id="book-isbn" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Año Publicación</label>
+                            <input type="number" id="book-year" class="form-input" min="1000" max="2099">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Precio ($)</label>
+                            <input type="number" id="book-price" class="form-input" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Stock</label>
+                            <input type="number" id="book-stock" class="form-input" min="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>URL Portada</label>
+                        <input type="url" id="book-cover" class="form-input" placeholder="https://ejemplo.com/imagen.jpg">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Autores (Ctrl+Click para seleccionar varios)</label>
+                        <select id="book-authors" class="form-input" multiple>
+                            <!-- Se llena dinámicamente -->
+                        </select>
+                        <small style="color: var(--text-muted);">Si la lista está vacía, asegúrate de tener autores creados en la API.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal('modal-form')" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DETALLE -->
+    <div id="modal-detail" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Detalle del Libro</h2>
+                <button onclick="closeModal('modal-detail')" class="btn btn-secondary btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-grid">
+                    <div>
+                        <img id="detail-cover" src="" alt="Portada" class="detail-cover" onerror="this.src='https://via.placeholder.com/150x220?text=No+Cover'">
+                    </div>
+                    <div class="detail-info">
+                        <h3 id="detail-title">Título del Libro</h3>
+                        <p id="detail-authors" class="detail-meta">Autor Desconocido</p>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">ISBN:</span>
+                            <span id="detail-isbn">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Año:</span>
+                            <span id="detail-year">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Precio:</span>
+                            <span id="detail-price">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Stock:</span>
+                            <span id="detail-stock">-</span>
+                        </div>
+                        <div class="detail-row" style="border-bottom: none;">
+                            <span class="detail-label">ID Sistema:</span>
+                            <span id="detail-id">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('modal-detail')" class="btn btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA JAVASCRIPT -->
+    <script>
+        // --- CONFIGURACIÓN ---
+        // IMPORTANTE: Cambia esta variable con el DNS de tu Load Balancer
+        const API_BASE_URL = 'http://library-api-935571113.us-east-1.elb.amazonaws.com'; 
+
+        // --- ESTADO GLOBAL ---
+        let TOKEN = localStorage.getItem('access_token');
+        let currentBooks = [];
+        let allAuthors = [];
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (TOKEN) {
+                showDashboard();
+            } else {
+                showLogin();
+            }
+
+            // Listeners
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            document.getElementById('book-form').addEventListener('submit', handleSaveBook);
+            document.getElementById('search-input').addEventListener('input', handleSearch);
+        });
+
+        // --- AUTH ---
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = e.target.querySelector('button');
+
+            setLoading(btn, true);
+
+            try {
+                // Usamos API_BASE_URL directamente
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!response.ok) throw new Error('Credenciales incorrectas o error de servidor');
+
+                const data = await response.json();
+                TOKEN = data.access_token;
+                localStorage.setItem('access_token', TOKEN);
+                
+                showToast('¡Bienvenido!', 'success');
+                showDashboard();
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('access_token');
+            TOKEN = null;
+            showLogin();
+        }
+
+        // --- NAVEGACIÓN ---
+        function showLogin() {
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('dashboard-view').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            document.getElementById('user-display').textContent = 'Admin';
+            fetchBooks();
+            fetchAuthors(); // Precargar autores para el formulario
+        }
+
+        // --- API CALLS ---
+        async function authenticatedFetch(endpoint, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${TOKEN}`,
+                ...options.headers
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+                
+                if (response.status === 401) {
+                    logout();
+                    throw new Error('Sesión expirada');
+                }
+                
+                // Si es delete y sale bien, a veces no devuelve json
+                if (response.status === 204 || (options.method === 'DELETE' && response.ok)) return true;
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `Error ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                showToast(error.message, 'error');
+                throw error;
+            }
+        }
+
+        async function fetchBooks() {
+            const loader = document.getElementById('loading');
+            const tbody = document.getElementById('books-table-body');
+            const emptyState = document.getElementById('empty-state');
+            
+            tbody.innerHTML = '';
+            loader.style.display = 'block';
+            emptyState.style.display = 'none';
+
+            try {
+                const data = await authenticatedFetch('/books');
+                currentBooks = data; // Guardar en memoria para busqueda local
+                renderTable(currentBooks);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        async function fetchAuthors() {
+            try {
+                const data = await authenticatedFetch('/authors');
+                allAuthors = data;
+                populateAuthorSelect();
+            } catch (e) {
+                console.warn("No se pudieron cargar autores", e);
+            }
+        }
+
+        async function deleteBook(id) {
+            if(!confirm('¿Estás seguro de eliminar este libro?')) return;
+
+            try {
+                await authenticatedFetch(`/books/${id}`, { method: 'DELETE' });
+                showToast('Libro eliminado', 'success');
+                fetchBooks(); // Recargar tabla
+            } catch (e) {
+                // Error ya manejado
+            }
+        }
+
+        async function handleSaveBook(e) {
+            e.preventDefault();
+            const form = e.target;
+            const id = document.getElementById('book-id').value;
+            const isEdit = !!id;
+
+            // Recolectar autores seleccionados
+            const selectAuth = document.getElementById('book-authors');
+            const selectedAuthIds = Array.from(selectAuth.selectedOptions).map(opt => parseInt(opt.value));
+
+            const payload = {
+                title: document.getElementById('book-title').value,
+                isbn: document.getElementById('book-isbn').value,
+                publication_year: parseInt(document.getElementById('book-year').value) || null,
+                price: parseFloat(document.getElementById('book-price').value) || 0,
+                stock: parseInt(document.getElementById('book-stock').value) || 0,
+                cover_image_url: document.getElementById('book-cover').value || null,
+                author_ids: selectedAuthIds
+            };
+
+            try {
+                if (isEdit) {
+                    await authenticatedFetch(`/books/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(payload)
+                    });
+                    showToast('Libro actualizado', 'success');
+                } else {
+                    await authenticatedFetch('/books', {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+                    showToast('Libro creado', 'success');
+                }
+                closeModal('modal-form');
+                fetchBooks();
+            } catch (e) {
+                // Error manejado
+            }
+        }
+
+        // --- RENDERIZADO ---
+        function renderTable(books) {
+            const tbody = document.getElementById('books-table-body');
+            const emptyState = document.getElementById('empty-state');
+            tbody.innerHTML = '';
+
+            if (books.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+            emptyState.style.display = 'none';
+
+            books.forEach(book => {
+                const tr = document.createElement('tr');
+                
+                // Stock Badge logic
+                const stockBadge = book.stock > 5 
+                    ? `<span class="badge badge-stock">En Stock</span>`
+                    : `<span class="badge badge-low">Bajo Stock</span>`;
+
+                tr.innerHTML = `
+                    <td>
+                        <img src="${book.cover_image_url || 'https://via.placeholder.com/40x60'}" 
+                             class="book-cover" onerror="this.src='https://via.placeholder.com/40x60'">
+                    </td>
+                    <td style="font-weight: 500;">${book.title}</td>
+                    <td style="color: var(--text-muted);">${book.authors || 'Sin autor'}</td>
+                    <td>${book.publication_year || '-'}</td>
+                    <td>$${book.price}</td>
+                    <td>${book.stock} ${stockBadge}</td>
+                    <td style="text-align: right;">
+                        <button onclick="viewDetail(${book.id})" class="btn btn-secondary btn-icon" title="Ver Detalle">
+                            <i class="ph ph-eye"></i>
+                        </button>
+                        <button onclick="prepareEdit(${book.id})" class="btn btn-secondary btn-icon" title="Editar">
+                            <i class="ph ph-pencil-simple"></i>
+                        </button>
+                        <button onclick="deleteBook(${book.id})" class="btn btn-danger btn-icon" title="Eliminar">
+                            <i class="ph ph-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function populateAuthorSelect(selectedIds = []) {
+            const select = document.getElementById('book-authors');
+            select.innerHTML = '';
+            
+            allAuthors.forEach(author => {
+                const option = document.createElement('option');
+                option.value = author.id;
+                option.textContent = author.name;
+                if(selectedIds.includes(author.id)) option.selected = true;
+                select.appendChild(option);
+            });
+        }
+
+        // --- MODALES & HELPERS ---
+        function openModal(type) {
+            if (type === 'create') {
+                document.getElementById('book-form').reset();
+                document.getElementById('book-id').value = '';
+                document.getElementById('modal-form-title').textContent = 'Crear Nuevo Libro';
+                populateAuthorSelect([]); // Limpiar selección
+                document.getElementById('modal-form').classList.add('active');
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function prepareEdit(id) {
+            const book = currentBooks.find(b => b.id === id);
+            if (!book) return;
+
+            document.getElementById('book-id').value = book.id;
+            document.getElementById('book-title').value = book.title;
+            document.getElementById('book-isbn').value = book.isbn || '';
+            document.getElementById('book-year').value = book.publication_year || '';
+            document.getElementById('book-price').value = book.price || 0;
+            document.getElementById('book-stock').value = book.stock || 0;
+            document.getElementById('book-cover').value = book.cover_image_url || '';
+            
+            // Set autores seleccionados
+            populateAuthorSelect(book.author_ids || []);
+
+            document.getElementById('modal-form-title').textContent = 'Editar Libro';
+            document.getElementById('modal-form').classList.add('active');
+        }
+
+        function viewDetail(id) {
+            const book = currentBooks.find(b => b.id === id);
+            if(!book) return;
+
+            document.getElementById('detail-title').textContent = book.title;
+            document.getElementById('detail-authors').textContent = book.authors || 'Sin autor';
+            document.getElementById('detail-isbn').textContent = book.isbn || 'N/A';
+            document.getElementById('detail-year').textContent = book.publication_year || 'N/A';
+            document.getElementById('detail-price').textContent = `$${book.price}`;
+            document.getElementById('detail-stock').textContent = book.stock;
+            document.getElementById('detail-id').textContent = book.id;
+            
+            const img = document.getElementById('detail-cover');
+            img.src = book.cover_image_url || '';
+            img.onerror = () => { img.src = 'https://via.placeholder.com/150x220?text=No+Cover'; };
+
+            document.getElementById('modal-detail').classList.add('active');
+        }
+
+        function handleSearch(e) {
+            const term = e.target.value.toLowerCase();
+            const filtered = currentBooks.filter(b => 
+                b.title.toLowerCase().includes(term) || 
+                (b.authors && b.authors.toLowerCase().includes(term))
+            );
+            renderTable(filtered);
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = type === 'success' ? 'toast-success' : 'toast-error';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function setLoading(btn, isLoading) {
+            if (isLoading) {
+                btn.dataset.originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Procesando...';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = btn.dataset.originalText;
+            }
+        }
+    </script>
+</body>
+</html>
