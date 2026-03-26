@@ -31,8 +31,6 @@ La solución sigue una arquitectura en la nube basada en:
 
 ![Arquitectura](docs/arquitectura.png)
 
-> 📌 Coloca tu imagen en la carpeta `docs/` del repositorio con el nombre `arquitectura.png`
-
 ---
 
 ## ⚙️ Tecnologías utilizadas
